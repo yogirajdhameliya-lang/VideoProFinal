@@ -4,60 +4,45 @@ import { VideoMetadata } from "../types";
 const MODEL_NAME = "gemini-3-flash-preview";
 
 export async function analyzeVideoUrl(url: string): Promise<VideoMetadata> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+  const apiKey = process.env.API_KEY || "";
+  const ai = new GoogleGenAI({ apiKey });
   
   try {
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
-      contents: `You are a YouTube metadata extractor. Analyze this URL: ${url}. 
-      Return the metadata for the video or the first video in the playlist.
-      If it's a playlist, prepend "[PLAYLIST]" to the title.
-      If the URL is invalid or inaccessible, provide high-quality realistic mock data that matches the vibe of a popular video.`,
+      contents: `Extract YouTube metadata for URL: ${url}. 
+      Return JSON for either a single video or the first item of a playlist.
+      If it is a playlist, add "[PLAYLIST]" to the start of the title.
+      If you cannot access the URL, provide realistic high-quality placeholder data for a tech video.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            title: { 
-              type: Type.STRING,
-              description: "Title of the video or playlist"
-            },
-            thumbnail: { 
-              type: Type.STRING,
-              description: "A high-quality image URL (use https://picsum.photos/800/450 if real is unknown)"
-            },
-            duration: { 
-              type: Type.STRING,
-              description: "Duration formatted as MM:SS or 'X Videos' for playlists"
-            },
-            author: { 
-              type: Type.STRING,
-              description: "Channel name or Creator"
-            },
-            views: { 
-              type: Type.STRING,
-              description: "Approximate views count like '1.5M views'"
-            },
+            title: { type: Type.STRING },
+            thumbnail: { type: Type.STRING, description: "High-res image URL" },
+            duration: { type: Type.STRING, description: "MM:SS or 'X Videos'" },
+            author: { type: Type.STRING },
+            views: { type: Type.STRING },
           },
           required: ["title", "thumbnail", "duration", "author", "views"],
         },
       },
     });
 
-    const text = response.text;
-    if (!text) {
-      throw new Error("Empty response from AI");
-    }
-    return JSON.parse(text.trim());
+    const resultText = response.text;
+    if (!resultText) throw new Error("No response from AI engine");
+    
+    return JSON.parse(resultText.trim());
   } catch (error) {
-    console.error("Gemini Analysis Error:", error);
-    const isPlaylist = url.includes('list=') || url.includes('playlist');
+    console.warn("Analysis fallback triggered:", error);
+    const isPlaylist = url.toLowerCase().includes('list=');
     return {
-      title: isPlaylist ? "[PLAYLIST] Global Tech Showcase 2025" : "The Future of 4K Cinema",
-      thumbnail: `https://picsum.photos/seed/${Math.random()}/800/450`,
-      duration: isPlaylist ? "32 Videos" : "15:42",
-      author: "PYJTech Official",
-      views: "1.8M views"
+      title: isPlaylist ? "[PLAYLIST] Ultimate 4K Visual Experience" : "The Future of Digital Content in 8K",
+      thumbnail: `https://picsum.photos/seed/${encodeURIComponent(url)}/800/450`,
+      duration: isPlaylist ? "18 Videos" : "12:45",
+      author: "PYJTech Creative",
+      views: "2.4M views"
     };
   }
 }
