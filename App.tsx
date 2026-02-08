@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { analyzeVideoUrl } from './services/geminiService';
 import { DownloadItem, VideoQuality, VideoMetadata } from './types';
@@ -20,9 +19,14 @@ const App: React.FC = () => {
     setIsAnalyzing(true);
     setUrl(inputUrl);
     setMetadata(null);
-    const result = await analyzeVideoUrl(inputUrl);
-    setMetadata(result);
-    setIsAnalyzing(false);
+    try {
+      const result = await analyzeVideoUrl(inputUrl);
+      setMetadata(result);
+    } catch (err) {
+      console.error("Analysis failed", err);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const startDownload = useCallback(() => {
@@ -47,7 +51,7 @@ const App: React.FC = () => {
     setShowSuccess(true);
     setTimeout(() => setShowSuccess(false), 3000);
     
-    // Clear analyzer to allow next link
+    // Reset for next potential link
     setMetadata(null);
     setUrl('');
   }, [metadata, url, selectedQuality]);
@@ -57,20 +61,26 @@ const App: React.FC = () => {
     const interval = setInterval(() => {
       setDownloads(prev => prev.map(item => {
         if (item.status === 'pending') return { ...item, status: 'processing' };
+        
         if (item.status === 'processing') {
-            if (item.progress >= 10) return { ...item, status: 'downloading' };
-            return { ...item, progress: item.progress + 5 };
+            if (item.progress >= 20) return { ...item, status: 'downloading' };
+            return { ...item, progress: item.progress + 4 };
         }
+        
         if (item.status === 'downloading') {
           if (item.progress >= 100) return { ...item, status: 'completed', progress: 100 };
           
-          // Realistic speeds: Audio is instant, 4K takes a bit of time
-          const step = item.quality === '4K' ? 1.2 : item.quality.includes('Audio') ? 10 : 5;
+          // Realistic speeds based on quality
+          let step = 5;
+          if (item.quality === '4K') step = 0.8;
+          else if (item.quality === '2K') step = 1.5;
+          else if (item.quality.includes('Audio')) step = 8;
+          
           return { ...item, progress: Math.min(100, item.progress + step) };
         }
         return item;
       }));
-    }, 400);
+    }, 500);
 
     return () => clearInterval(interval);
   }, []);
@@ -81,9 +91,9 @@ const App: React.FC = () => {
       
       {showSuccess && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-4 fade-in duration-300">
-          <div className="bg-green-500 text-white px-6 py-3 rounded-full font-black text-sm shadow-2xl shadow-green-500/40 flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+          <div className="bg-green-600 text-white px-6 py-3 rounded-full font-black text-xs shadow-2xl shadow-green-500/40 flex items-center gap-2 border border-green-400/50">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
             </svg>
             ADDED TO QUEUE
           </div>
@@ -91,19 +101,19 @@ const App: React.FC = () => {
       )}
 
       <main className="max-w-4xl mx-auto px-4 mt-16 md:mt-24 space-y-12">
-        <div className={`text-center space-y-6 transition-all duration-700 ${metadata ? 'scale-90 opacity-80' : 'scale-100'}`}>
+        <div className={`text-center space-y-6 transition-all duration-700 ${metadata ? 'scale-95 opacity-80' : 'scale-100'}`}>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold tracking-widest uppercase mb-4">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
             </span>
-            PYJTech Pro Downloader
+            PRO 4K ENGINE ENABLED
           </div>
           <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-tight">
-            Download in <span className="gradient-text">4K Ultra HD</span>
+            The <span className="gradient-text">Premium</span> Way to Save
           </h1>
           <p className="text-gray-400 text-lg md:text-xl max-w-xl mx-auto leading-relaxed">
-            The world's fastest YouTube playlist and video downloader. Paste, Process, and Save to your device.
+            Ultra-fast YouTube video and playlist extraction. Download in 4K, 2K, or high-fidelity audio instantly.
           </p>
         </div>
 
@@ -154,11 +164,6 @@ const App: React.FC = () => {
                     </svg>
                     Download Now
                   </button>
-                  <div className="flex justify-center gap-6 text-[10px] text-gray-600 font-black uppercase tracking-[0.2em]">
-                    <span>High Fidelity</span>
-                    <span>No Limits</span>
-                    <span>Device Secure</span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -177,9 +182,8 @@ const App: React.FC = () => {
             </p>
           </div>
           <div className="flex gap-8 text-[10px] font-black text-gray-500 uppercase tracking-[0.3em]">
-            <span className="text-blue-500/50">4K Engine v3.1</span>
-            <a href="#" className="hover:text-blue-400 transition-colors">Privacy</a>
-            <a href="#" className="hover:text-blue-400 transition-colors">Support</a>
+            <span className="text-blue-500/50">Server: Node-East-1</span>
+            <span className="text-gray-700">v1.0.4-Stable</span>
           </div>
         </div>
       </footer>
